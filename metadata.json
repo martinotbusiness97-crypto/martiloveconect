@@ -1,0 +1,7 @@
+{
+  "name": "MartiLoveconect",
+  "description": "Une application de rencontre moderne et élégante pour découvrir des profils inspirants et engager des conversations significatives.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
