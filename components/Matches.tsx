@@ -14,13 +14,15 @@ const Matches: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     
-    const matchesRef = ref(db, `user_chats/${user.uid}`);
-    const unsubscribe = onValue(matchesRef, async (snapshot) => {
+    const userChatsRef = ref(db, `user_chats/${user.uid}`);
+    const unsubscribe = onValue(userChatsRef, async (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const matchIds = Object.values(data).map((c: any) => c.participantId);
-        const profiles: Profile[] = [];
+        // Filtrer uniquement ceux qui sont des matches officiels (réciprocité validée)
+        const matchData = Object.values(data).filter((c: any) => c.isMatch === true);
+        const matchIds = matchData.map((c: any) => c.participantId);
         
+        const profiles: Profile[] = [];
         for (const mId of matchIds) {
           const uRef = ref(db, `users/${mId}`);
           const uSnap = await new Promise<any>(res => onValue(uRef, s => res(s.val()), {onlyOnce: true}));
@@ -38,7 +40,7 @@ const Matches: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-[60vh]">
         <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
       </div>
     );
@@ -46,13 +48,13 @@ const Matches: React.FC = () => {
 
   return (
     <div className="p-4 md:p-6 pb-24 h-full">
-      <h1 className="text-3xl font-bold mb-8 dark:text-white">{t('matches.title')}</h1>
+      <h1 className="text-3xl font-black tracking-tighter mb-8 dark:text-white">{t('matches.title')}</h1>
       
       {matches.length > 0 ? (
         <div className="grid grid-cols-2 gap-4">
           {matches.map((p) => (
-            <div key={p.id} className="relative group aspect-[3/4] rounded-3xl overflow-hidden shadow-md">
-              <img src={p.imageUrl} className="w-full h-full object-cover" />
+            <div key={p.id} className="relative group aspect-[3/4] rounded-3xl overflow-hidden shadow-md animate-in zoom-in-95 duration-300">
+              <img src={p.imageUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
                 <div className="text-white">
@@ -74,7 +76,7 @@ const Matches: React.FC = () => {
             <Heart className="w-10 h-10 text-pink-500 fill-current" />
           </div>
           <h2 className="text-2xl font-bold mb-2 dark:text-white">{t('matches.title')}</h2>
-          <p className="text-slate-500 max-w-xs">{t('matches.empty')}</p>
+          <p className="text-slate-500 text-sm max-w-xs">{t('matches.empty')}</p>
         </div>
       )}
     </div>

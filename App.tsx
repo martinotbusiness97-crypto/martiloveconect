@@ -19,7 +19,7 @@ import { Language, translations } from './translations';
 import { Heart } from 'lucide-react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { ref, onValue, set, update, serverTimestamp } from 'firebase/database';
+import { ref, onValue, set, update, serverTimestamp, get } from 'firebase/database';
 
 export type SoundType = 'sent' | 'received' | 'match' | 'notif';
 
@@ -71,6 +71,7 @@ const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<AppTab>('discover');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('aura-theme') === 'dark');
   const [language, setLanguageState] = useState<Language>(() => {
@@ -80,7 +81,6 @@ const App: React.FC = () => {
   const [isMuted, setIsMutedState] = useState(() => localStorage.getItem('aura-muted') === 'true');
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   
-  // États pour les badges
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
 
@@ -91,10 +91,10 @@ const App: React.FC = () => {
         const profileRef = ref(db, `users/${firebaseUser.uid}`);
         onValue(profileRef, (snapshot) => {
           const data = snapshot.val();
-          if (data) setProfile(data);
+          setProfile(data);
+          setProfileLoaded(true);
         });
 
-        // Écouter les messages non lus
         const userChatsRef = ref(db, `user_chats/${firebaseUser.uid}`);
         onValue(userChatsRef, (snapshot) => {
           const data = snapshot.val();
@@ -106,7 +106,6 @@ const App: React.FC = () => {
           }
         });
 
-        // Écouter les nouveaux likes (notifications)
         const likesRef = ref(db, `likes/${firebaseUser.uid}`);
         onValue(likesRef, (snapshot) => {
           const data = snapshot.val();
@@ -115,6 +114,7 @@ const App: React.FC = () => {
 
       } else {
         setProfile(null);
+        setProfileLoaded(true);
         setUnreadMessages(0);
         setUnreadNotifs(0);
       }
@@ -128,6 +128,7 @@ const App: React.FC = () => {
       await signOut(auth);
       setUser(null);
       setProfile(null);
+      setProfileLoaded(false);
     } catch (error) {
       console.error("Logout error", error);
     }
@@ -155,17 +156,21 @@ const App: React.FC = () => {
     audio.play().catch(() => {});
   }, [volume, isMuted]);
 
-  const startConversation = (profileToMessage: Profile) => {
+  const startConversation = async (profileToMessage: Profile) => {
     if (!user) return;
     const convId = [user.uid, profileToMessage.id].sort().join('_');
     
-    const updates: any = {};
-    updates[`user_chats/${user.uid}/${convId}/participantId`] = profileToMessage.id;
-    updates[`user_chats/${user.uid}/${convId}/timestamp`] = serverTimestamp();
-    updates[`user_chats/${profileToMessage.id}/${convId}/participantId`] = user.uid;
-    updates[`user_chats/${profileToMessage.id}/${convId}/timestamp`] = serverTimestamp();
-    
-    update(ref(db), updates);
+    // Vérifier si c'est un match officiel via mon Inbox (si l'autre m'a déjà liké)
+    const iWasLikedSnap = await get(ref(db, `likes/${user.uid}/${profileToMessage.id}`));
+    const isMatchDetected = iWasLikedSnap.exists();
+
+    // On ne met à jour QUE mon propre nœud user_chats pour éviter les PERMISSION_DENIED
+    const myChatUpdates: any = {};
+    myChatUpdates[`user_chats/${user.uid}/${convId}/participantId`] = profileToMessage.id;
+    myChatUpdates[`user_chats/${user.uid}/${convId}/timestamp`] = serverTimestamp();
+    myChatUpdates[`user_chats/${user.uid}/${convId}/isMatch`] = isMatchDetected;
+
+    await update(ref(db), myChatUpdates);
     setActiveChatId(convId);
     setActiveTab('messages');
   };
@@ -221,9 +226,9 @@ const App: React.FC = () => {
     }
   };
 
-  if (showSplash) return <Splash />;
+  if (showSplash || !profileLoaded) return <Splash />;
 
-  if (!user) {
+  if (!user || (profileLoaded && (!profile || !profile.isComplete))) {
     return (
       <LanguageContext.Provider value={{ user, profile, language, t, setLanguage, playSound, volume, setVolume, isMuted, setIsMuted, startConversation }}>
         <AuthView onLogin={() => {}} />

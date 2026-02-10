@@ -14,6 +14,7 @@ export interface Profile {
   gender?: string;
   seeking?: string;
   goal?: string;
+  isComplete?: boolean;
   settings?: {
     isPublic?: boolean;
     incognitoMode?: boolean;
