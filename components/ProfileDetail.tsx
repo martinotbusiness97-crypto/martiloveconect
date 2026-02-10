@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Profile } from '../types';
-import { X, Heart, MapPin, Info, ArrowLeft, Globe, Star, MessageCircle, Send, Loader2, User } from 'lucide-react';
+import { X, Heart, MapPin, Info, ArrowLeft, Globe, Star, MessageCircle, Send, Loader2, User, Sparkles } from 'lucide-react';
 import { useTranslation } from '../App';
+import { GoogleGenAI } from "@google/genai";
 
 interface ProfileDetailProps {
   profile: Profile;
@@ -12,10 +12,11 @@ interface ProfileDetailProps {
 }
 
 const ProfileDetail: React.FC<ProfileDetailProps> = ({ profile, onClose, onLike, onPass }) => {
-  const { startConversation } = useTranslation();
+  const { startConversation, t } = useTranslation();
   const [showQuickChat, setShowQuickChat] = useState(false);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [imageError, setImageError] = useState(false);
 
   const showActions = onLike && onPass;
@@ -31,6 +32,31 @@ const ProfileDetail: React.FC<ProfileDetailProps> = ({ profile, onClose, onLike,
       console.error(e);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const generateIcebreaker = async () => {
+    setIsGenerating(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = t('ai.prompt')
+        .replace('{name}', profile.name)
+        .replace('{age}', String(profile.age))
+        .replace('{interest}', profile.interest || "tout");
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+      });
+
+      if (response.text) {
+        setMessage(response.text.trim());
+      }
+    } catch (error) {
+      console.error("Erreur Gemini:", error);
+      setMessage("Salut ! J'ai vraiment aimé ton profil, on discute ?");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -131,13 +157,25 @@ const ProfileDetail: React.FC<ProfileDetailProps> = ({ profile, onClose, onLike,
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            <textarea 
-              autoFocus
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="w-full p-5 bg-slate-50 dark:bg-slate-800 rounded-[2rem] border-none outline-none text-sm dark:text-white resize-none min-h-[120px] mb-6 font-medium"
-              placeholder="Écrivez quelque chose d'inspirant..."
-            />
+            
+            <div className="relative mb-6">
+              <textarea 
+                autoFocus
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="w-full p-5 bg-slate-50 dark:bg-slate-800 rounded-[2rem] border-none outline-none text-sm dark:text-white resize-none min-h-[120px] font-medium"
+                placeholder="Écrivez quelque chose d'inspirant..."
+              />
+              <button 
+                onClick={generateIcebreaker}
+                disabled={isGenerating}
+                className="absolute bottom-4 right-4 p-3 bg-pink-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform disabled:opacity-50"
+                title="Générer une phrase magique"
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              </button>
+            </div>
+
             <button 
               onClick={handleSendMessage}
               disabled={!message.trim() || isSending}

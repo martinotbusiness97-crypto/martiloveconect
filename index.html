@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -22,6 +21,8 @@
         }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Babel pour la transpilation en direct (développement/déploiement rapide) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -64,5 +65,7 @@
 </head>
 <body class="antialiased text-slate-900 dark:text-slate-100 transition-colors duration-300">
     <div id="root"></div>
+    <!-- Chargement de l'application via Babel -->
+    <script type="text/babel" data-type="module" src="index.tsx"></script>
 </body>
 </html>

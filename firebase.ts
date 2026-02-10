@@ -1,10 +1,11 @@
-
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
+// Configuration Firebase utilisant les variables d'environnement
 const firebaseConfig = {
-  apiKey: "AIzaSyBm9ygLFMi9wcZoMvv3wBfMj22QL2agB-E",
+  // Utilise process.env.API_KEY injecté par Netlify ou la clé par défaut si non définie
+  apiKey: process.env.API_KEY || "AIzaSyBm9ygLFMi9wcZoMvv3wBfMj22QL2agB-E",
   authDomain: "martiloveconect.firebaseapp.com",
   databaseURL: "https://martiloveconect-default-rtdb.firebaseio.com",
   projectId: "martiloveconect",
